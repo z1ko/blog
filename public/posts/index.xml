@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Posts on z1blog</title>
+    <link>https://z1ko.github.io/z1blog.github.io/posts/</link>
+    <description>Recent content in Posts on z1blog</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Fri, 21 Oct 2022 22:11:16 +0200</lastBuildDate><atom:link href="https://z1ko.github.io/z1blog.github.io/posts/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Introduction</title>
+      <link>https://z1ko.github.io/z1blog.github.io/posts/introduction/</link>
+      <pubDate>Fri, 21 Oct 2022 22:11:16 +0200</pubDate>
+      
+      <guid>https://z1ko.github.io/z1blog.github.io/posts/introduction/</guid>
+      <description>This is the start of a new adventure! In this blog I will talk about interesting things an projects that I&amp;rsquo;m working on.</description>
+      <content>&lt;p&gt;This is the start of a new adventure! In this blog I will talk about interesting things an projects that I&amp;rsquo;m working on.&lt;/p&gt;
+</content>
+    </item>
+    
+    <item>
+      <title>ELF code encryption</title>
+      <link>https://z1ko.github.io/z1blog.github.io/posts/elf_code_encryption/</link>
+      <pubDate>Fri, 21 Oct 2022 00:00:00 +0000</pubDate>
+      
+      <guid>https://z1ko.github.io/z1blog.github.io/posts/elf_code_encryption/</guid>
+      <description>L&amp;rsquo;idea Per questo progetto volevo creare una libreria e dei tools per facilitare la creazione di codice criptato. L&amp;rsquo;idea è quella di produrre un eseguibile diviso in due sezioni, un loader e una regione criptata. Il loader ha il compito di decriptare la seconda regione dopo aver, ad esempio, superato un controllo sulla licenza.
+Setup #define POLYV_IMPLEMENTATION #include &amp;lt;polyv.h&amp;gt; // Funzione che verra automaticamente criptata nell&amp;#39;eseguibile finale void POLYV_ENCRYPTED encrypted_function() { /* .</description>
+      <content>&lt;h1 id=&#34;lidea&#34;&gt;L&amp;rsquo;idea&lt;/h1&gt;
+&lt;p&gt;Per questo progetto volevo creare una libreria e dei tools per facilitare la creazione di codice criptato. L&amp;rsquo;idea è quella di produrre un eseguibile diviso in due sezioni, un loader e una regione criptata.
+Il loader ha il compito di decriptare la seconda regione dopo aver, ad esempio, superato un controllo sulla licenza.&lt;/p&gt;
+&lt;h1 id=&#34;setup&#34;&gt;Setup&lt;/h1&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-c&#34; data-lang=&#34;c&#34;&gt;&lt;span style=&#34;color:#75715e&#34;&gt;#define POLYV_IMPLEMENTATION
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;#include&lt;/span&gt; &lt;span style=&#34;color:#75715e&#34;&gt;&amp;lt;polyv.h&amp;gt;&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;
+&lt;span style=&#34;color:#75715e&#34;&gt;// Funzione che verra automaticamente criptata nell&amp;#39;eseguibile finale
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;void&lt;/span&gt; POLYV_ENCRYPTED &lt;span style=&#34;color:#a6e22e&#34;&gt;encrypted_function&lt;/span&gt;() { &lt;span style=&#34;color:#75715e&#34;&gt;/* ... */&lt;/span&gt; }
+
+&lt;span style=&#34;color:#75715e&#34;&gt;// Funzione normale, non verrà criptata
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;void&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;normal_function&lt;/span&gt;() { &lt;span style=&#34;color:#75715e&#34;&gt;/* ... */&lt;/span&gt; }
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Definiamo delle macro per semplificarci la vita, tutte le funzioni con il nostro attributo POLYV_ENCRYPTED verranno inserite nella regione segreta dal linker&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-c&#34; data-lang=&#34;c&#34;&gt;&lt;span style=&#34;color:#75715e&#34;&gt;#define POLYV_ENCRYPTED_SECTION &amp;#34;.etext&amp;#34;
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;#define POLYV_ENCRYPTED __attribute__ ((section (POLYV_ENCRYPTED_SECTION)))
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Ma cosa succede se non abbiamo una sola unità di compilazione? E come facciamo a capire l&amp;rsquo;inizio e la fine della regione nascosta? Entrambi questi quesiti possono essere risolti creando uno script per il linker tutto nostro, un&amp;rsquo;antica arte che solamente gli sviluppatori di firmware conoscono.&lt;/p&gt;
+&lt;pre&gt;&lt;code class=&#34;language-ld&#34; data-lang=&#34;ld&#34;&gt;SECTIONS {
+    OVERLAY : {
+        .etext
+        {
+            . = ALIGN(4); 
+            *(.etext)
+        }
+    }
+    .ekey : { *(.ekey) }
+
+} INSERT AFTER .text;
+&lt;/code&gt;&lt;/pre&gt;&lt;p&gt;Se chiamiamo questo script encrypted.ld, possiamo specificare usarlo durante la compilazione con la flag -Tencrypted.ld.&lt;/p&gt;
+&lt;h1 id=&#34;implementazione&#34;&gt;Implementazione&lt;/h1&gt;
+&lt;p&gt;Ora possiamo scrivere la funzione del loader che decripterà la regione nascosta.&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-c&#34; data-lang=&#34;c&#34;&gt;&lt;span style=&#34;color:#75715e&#34;&gt;// Simboli generati dal linker per individuare l&amp;#39;inizio e la fine della regione criptata
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;extern&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;char&lt;/span&gt; __load_start_etext, __load_stop_etext;
+
+&lt;span style=&#34;color:#75715e&#34;&gt;// Decripta la regione critica
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;void&lt;/span&gt; POLYV_LOADER &lt;span style=&#34;color:#a6e22e&#34;&gt;polyv_self_sxor&lt;/span&gt;(&lt;span style=&#34;color:#66d9ef&#34;&gt;char&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; key, size_t key_size) {
+
+    size_t section_beg &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; (size_t)&lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&lt;/span&gt;__load_start_etext;
+    size_t section_end &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; (size_t)&lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&lt;/span&gt;__load_stop_etext;
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;const&lt;/span&gt; size_t page_size &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; getpagesize();
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;const&lt;/span&gt; size_t section_delta &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; section_end &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; section_beg;
+    size_t section_size &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; section_delta;
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; (section_size &lt;span style=&#34;color:#f92672&#34;&gt;%&lt;/span&gt; page_size &lt;span style=&#34;color:#f92672&#34;&gt;!=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;)
+        section_size &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; section_delta &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; (section_delta &lt;span style=&#34;color:#f92672&#34;&gt;%&lt;/span&gt; page_size);
+
+    &lt;span style=&#34;color:#75715e&#34;&gt;// Enable writing of the section
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;void&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; section_page &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; (&lt;span style=&#34;color:#66d9ef&#34;&gt;void&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;)(section_beg &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; (section_beg &lt;span style=&#34;color:#f92672&#34;&gt;%&lt;/span&gt; page_size));
+    mprotect(section_page, section_size, PROT_EXEC &lt;span style=&#34;color:#f92672&#34;&gt;|&lt;/span&gt; PROT_WRITE &lt;span style=&#34;color:#f92672&#34;&gt;|&lt;/span&gt; PROT_READ);
+
+    &lt;span style=&#34;color:#75715e&#34;&gt;// Apply symmetric XOR with provided key
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;char&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; section &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; (&lt;span style=&#34;color:#66d9ef&#34;&gt;char&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;)(section_beg);
+    polyv_sxor(section, section_delta, key, key_size);
+
+    &lt;span style=&#34;color:#75715e&#34;&gt;// Disable writing of the section
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;    mprotect(section_page, section_size, PROT_EXEC &lt;span style=&#34;color:#f92672&#34;&gt;|&lt;/span&gt; PROT_READ);
+}
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h1 id=&#34;conclusione&#34;&gt;Conclusione&lt;/h1&gt;
+&lt;p&gt;Grazie! Alla prossima.
+FZ.&lt;/p&gt;
+</content>
+    </item>
+    
+  </channel>
+</rss>

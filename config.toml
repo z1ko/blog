@@ -1,7 +1,7 @@
 baseURL = "https://z1ko.github.io/z1blog.github.io/"
 languageCode = "en-us"
 title = "z1blog"
-theme = "risotto"
+theme = "terminal"
 paginate = 5
 
 [params]
