@@ -1,63 +1,96 @@
 ---
 title: "ELF code encryption"
 author: "Filippo Ziche"
-description: "In questo post vedremo come creare un eseguibile con del codice criptato."
+description: "In this post we will learn how to dynamically encrypt/decrypt code sections of an ELF file to make reverse engineering a bit more difficult."
 date: 2022-10-21
 draft: false
 ---
 
-# L'idea
+# Motivation 
 
-Per questo progetto volevo creare una libreria e dei tools per facilitare la creazione di codice criptato. L'idea è quella di produrre un eseguibile diviso in due sezioni, un loader e una regione criptata.
-Il loader ha il compito di decriptare la seconda regione dopo aver, ad esempio, superato un controllo sulla licenza.
+Dynamic encryption and decryption of executable code is an usefull and interesting thing, it can be used to protect our software from reverse engineering attempts or to create polymorphic viruses that hide their code signature from simple antivirus signature detection. In this post we will focus our attention on the first case, hiding our closed source code and exposing only a "loader" interface, used to decrypt the code after, for example, we pass a signature check.
 
-# Setup
+# ELF file format
+
+The ELF file is used to describe how a program is laid out in main memory, and is made of a header, describing the internal structure of the file, and some sections and segments. To keep things simple and not 
+delve to deep in the format internals (you can find all the information here: https://man7.org/linux/man-pages/man5/elf.5.html) we just need to remember that the code and static data of a program are stored inside different sections, .text for the instructions, .data and .bss for static initialized and uninitialized variables respectively. Segments describe how different multiple sections are laid out in virtual memory. 
 
 ```c
-#define POLYV_IMPLEMENTATION
-#include <polyv.h>
+architecture: i386, flags 0x00000011:
+HAS_RELOC, HAS_SYMS
+start address 0x00000000
 
-// Funzione che verra automaticamente criptata nell'eseguibile finale
+Sections:
+Idx Name          Size      VMA       LMA       File off  Algn
+  0 .text         00000333  00000000  00000000  00000040  2**4
+                  CONTENTS, ALLOC, LOAD, RELOC, READONLY, CODE
+  1 .data         00000050  00000000  00000000  00000380  2**5
+                  CONTENTS, ALLOC, LOAD, DATA
+  2 .bss          00000000  00000000  00000000  000003d0  2**2
+                  ALLOC
+  3 .note         00000014  00000000  00000000  000003d0  2**0
+                  CONTENTS, READONLY
+  4 .stab         000020e8  00000000  00000000  000003e4  2**2
+                  CONTENTS, RELOC, READONLY, DEBUGGING
+  5 .stabstr      00008f17  00000000  00000000  000024cc  2**0
+                  CONTENTS, READONLY, DEBUGGING
+  6 .rodata       000001e4  00000000  00000000  0000b400  2**5
+                  CONTENTS, ALLOC, LOAD, READONLY, DATA
+  7 .comment      00000023  00000000  00000000  0000b5e4  2**0
+                  CONTENTS, READONLY
+```
+
+Here we can see the standard sections of an EFL file.
+
+# Encrypted section
+
+Our goal is to add a new custom section, .etext, to the ELF and to place all our hidden code inside it. Thankfully this is simple using gcc, we just have to add a function attribute to all functions we want to protect and the compiler will automatically add them to che specified section. To make things more readable we will use a macro.
+
+```c
+#define ENCRYPTED_SECTION ".etext"
+#define ENCRYPTED __attribute__ ((__section__ (POLYV_ENCRYPTED_SECTION)))
+```
+
+Now we can put any function in the .etext section easily.
+
+```c
 void POLYV_ENCRYPTED encrypted_function() { /* ... */ }
-
-// Funzione normale, non verrà criptata
 void normal_function() { /* ... */ }
 ```
 
-Definiamo delle macro per semplificarci la vita, tutte le funzioni con il nostro attributo POLYV\_ENCRYPTED verranno inserite nella regione segreta dal linker 
-
-```c
-#define POLYV_ENCRYPTED_SECTION ".etext"
-#define POLYV_ENCRYPTED __attribute__ ((section (POLYV_ENCRYPTED_SECTION)))
-```
-
-Ma cosa succede se non abbiamo una sola unità di compilazione? E come facciamo a capire l'inizio e la fine della regione nascosta? Entrambi questi quesiti possono essere risolti creando uno script per il linker tutto nostro, un'antica arte che solamente gli sviluppatori di firmware conoscono.
+But there are problems, big ones. This only works on if there is only a single compilation unit, a single .cpp file. That is a bit limiting, we shouldn't be forced to develop our application as a unity build.
+And if we manage to merge all .etext of our units into a final big one, where is it in memory? How can we find it? To answer all those question we will use an old art, known oly to embedded firmware developers, a custom linker script.
 
 ```ld
+
+// With the sections comands we can specify how the sections of the different
+// object files are merged together, here we simply merge all separate .etext sections
 SECTIONS {
-    OVERLAY : {
-        .etext
-        {
-            . = ALIGN(4); 
-            *(.etext)
-        }
-    }
-    .ekey : { *(.ekey) }
+
+	// The overlay is exactly what we need to manipulate the hidden section, 
+	// it will create linker symbols, one at the beginning and one at the end  
+    	OVERLAY : { .etext { *(.etext) } }
+
+	// This is the section that will contain our program license
+    	.license : { *(.license) }
 
 } INSERT AFTER .text;
 ```
 
-Se chiamiamo questo script encrypted.ld, possiamo specificare usarlo durante la compilazione con la flag -Tencrypted.ld.
+If we call this linker script _encrypted.ld_ then we can use it during compilation by using the linker flag -T.
 
-# Implementazione
+```
+ld -Tencrypted.ld ...
+```
 
-Ora possiamo scrivere la funzione del loader che decripterà la regione nascosta.
+# Loader
+
+With our setup complete we can now create the loader, which will encrypt/decrypt our hidden section using a simple XOR with the license.
 
 ```c
-// Simboli generati dal linker per individuare l'inizio e la fine della regione criptata
+// The linker sections generated by the OVERLAY command in the linker script
 extern char __load_start_etext, __load_stop_etext;
 
-// Decripta la regione critica
 void POLYV_LOADER polyv_self_sxor(char* key, size_t key_size) {
 
     size_t section_beg = (size_t)&__load_start_etext;
@@ -82,8 +115,8 @@ void POLYV_LOADER polyv_self_sxor(char* key, size_t key_size) {
     mprotect(section_page, section_size, PROT_EXEC | PROT_READ);
 }
 ```
-# Conclusione
+# Conclusion
 
-Grazie! Alla prossima.
+Thanks! Until next time.
 FZ.
 
