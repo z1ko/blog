@@ -1,4 +1,4 @@
-baseURL = "https://z1ko.github.io/z1blog.github.io/"
+baseURL = "https://z1ko.github.io/blog/"
 languageCode = "en-us"
 title = "z1blog"
 theme = "terminal"
