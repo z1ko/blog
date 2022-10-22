@@ -2,65 +2,87 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>z1blog</title>
-    <link>https://z1ko.github.io/z1blog.github.io/</link>
+    <link>https://z1ko.github.io/blog/</link>
     <description>Recent content on z1blog</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Fri, 21 Oct 2022 22:11:16 +0200</lastBuildDate><atom:link href="https://z1ko.github.io/z1blog.github.io/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Fri, 21 Oct 2022 22:11:16 +0200</lastBuildDate><atom:link href="https://z1ko.github.io/blog/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Introduction</title>
-      <link>https://z1ko.github.io/z1blog.github.io/posts/introduction/</link>
+      <link>https://z1ko.github.io/blog/posts/introduction/</link>
       <pubDate>Fri, 21 Oct 2022 22:11:16 +0200</pubDate>
       
-      <guid>https://z1ko.github.io/z1blog.github.io/posts/introduction/</guid>
+      <guid>https://z1ko.github.io/blog/posts/introduction/</guid>
       <description>This is the start of a new adventure! In this blog I will talk about interesting things an projects that I&amp;rsquo;m working on.</description>
       <content>&lt;p&gt;This is the start of a new adventure! In this blog I will talk about interesting things an projects that I&amp;rsquo;m working on.&lt;/p&gt;
 </content>
     </item>
     
     <item>
-      <title>ELF code encryption</title>
-      <link>https://z1ko.github.io/z1blog.github.io/posts/elf_code_encryption/</link>
+      <title>ELF code encryption [draft]</title>
+      <link>https://z1ko.github.io/blog/posts/elf_code_encryption/</link>
       <pubDate>Fri, 21 Oct 2022 00:00:00 +0000</pubDate>
       
-      <guid>https://z1ko.github.io/z1blog.github.io/posts/elf_code_encryption/</guid>
-      <description>L&amp;rsquo;idea Per questo progetto volevo creare una libreria e dei tools per facilitare la creazione di codice criptato. L&amp;rsquo;idea è quella di produrre un eseguibile diviso in due sezioni, un loader e una regione criptata. Il loader ha il compito di decriptare la seconda regione dopo aver, ad esempio, superato un controllo sulla licenza.
-Setup #define POLYV_IMPLEMENTATION #include &amp;lt;polyv.h&amp;gt; // Funzione che verra automaticamente criptata nell&amp;#39;eseguibile finale void POLYV_ENCRYPTED encrypted_function() { /* .</description>
-      <content>&lt;h1 id=&#34;lidea&#34;&gt;L&amp;rsquo;idea&lt;/h1&gt;
-&lt;p&gt;Per questo progetto volevo creare una libreria e dei tools per facilitare la creazione di codice criptato. L&amp;rsquo;idea è quella di produrre un eseguibile diviso in due sezioni, un loader e una regione criptata.
-Il loader ha il compito di decriptare la seconda regione dopo aver, ad esempio, superato un controllo sulla licenza.&lt;/p&gt;
-&lt;h1 id=&#34;setup&#34;&gt;Setup&lt;/h1&gt;
-&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-c&#34; data-lang=&#34;c&#34;&gt;&lt;span style=&#34;color:#75715e&#34;&gt;#define POLYV_IMPLEMENTATION
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;#include&lt;/span&gt; &lt;span style=&#34;color:#75715e&#34;&gt;&amp;lt;polyv.h&amp;gt;&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;
-&lt;span style=&#34;color:#75715e&#34;&gt;// Funzione che verra automaticamente criptata nell&amp;#39;eseguibile finale
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;void&lt;/span&gt; POLYV_ENCRYPTED &lt;span style=&#34;color:#a6e22e&#34;&gt;encrypted_function&lt;/span&gt;() { &lt;span style=&#34;color:#75715e&#34;&gt;/* ... */&lt;/span&gt; }
+      <guid>https://z1ko.github.io/blog/posts/elf_code_encryption/</guid>
+      <description>Motivation Dynamic encryption and decryption of executable code is an usefull and interesting thing, it can be used to protect our software from reverse engineering attempts or to create polymorphic viruses that hide their code signature from simple antivirus signature detection. In this post we will focus our attention on the first case, hiding our closed source code and exposing only a &amp;ldquo;loader&amp;rdquo; interface, used to decrypt the code after, for example, we pass a signature check.</description>
+      <content>&lt;h1 id=&#34;motivation&#34;&gt;Motivation&lt;/h1&gt;
+&lt;p&gt;Dynamic encryption and decryption of executable code is an usefull and interesting thing, it can be used to protect our software from reverse engineering attempts or to create polymorphic viruses that hide their code signature from simple antivirus signature detection. In this post we will focus our attention on the first case, hiding our closed source code and exposing only a &amp;ldquo;loader&amp;rdquo; interface, used to decrypt the code after, for example, we pass a signature check.&lt;/p&gt;
+&lt;h1 id=&#34;elf-file-format&#34;&gt;ELF file format&lt;/h1&gt;
+&lt;p&gt;The ELF file is used to describe how a program is laid out in main memory, and is made of a header, describing the internal structure of the file, and some sections and segments. To keep things simple and not
+delve to deep in the format internals (you can find all the information here: &lt;a href=&#34;https://man7.org/linux/man-pages/man5/elf.5.html&#34;&gt;https://man7.org/linux/man-pages/man5/elf.5.html&lt;/a&gt;) we just need to remember that the code and static data of a program are stored inside different sections, .text for the instructions, .data and .bss for static initialized and uninitialized variables respectively. Segments describe how different multiple sections are laid out in virtual memory.&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-c&#34; data-lang=&#34;c&#34;&gt;architecture: i386, flags &lt;span style=&#34;color:#ae81ff&#34;&gt;0x00000011&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;:&lt;/span&gt;
+HAS_RELOC, HAS_SYMS
+start address &lt;span style=&#34;color:#ae81ff&#34;&gt;0x00000000&lt;/span&gt;
 
-&lt;span style=&#34;color:#75715e&#34;&gt;// Funzione normale, non verrà criptata
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;void&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;normal_function&lt;/span&gt;() { &lt;span style=&#34;color:#75715e&#34;&gt;/* ... */&lt;/span&gt; }
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Definiamo delle macro per semplificarci la vita, tutte le funzioni con il nostro attributo POLYV_ENCRYPTED verranno inserite nella regione segreta dal linker&lt;/p&gt;
-&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-c&#34; data-lang=&#34;c&#34;&gt;&lt;span style=&#34;color:#75715e&#34;&gt;#define POLYV_ENCRYPTED_SECTION &amp;#34;.etext&amp;#34;
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;#define POLYV_ENCRYPTED __attribute__ ((section (POLYV_ENCRYPTED_SECTION)))
-&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Ma cosa succede se non abbiamo una sola unità di compilazione? E come facciamo a capire l&amp;rsquo;inizio e la fine della regione nascosta? Entrambi questi quesiti possono essere risolti creando uno script per il linker tutto nostro, un&amp;rsquo;antica arte che solamente gli sviluppatori di firmware conoscono.&lt;/p&gt;
-&lt;pre&gt;&lt;code class=&#34;language-ld&#34; data-lang=&#34;ld&#34;&gt;SECTIONS {
-    OVERLAY : {
-        .etext
-        {
-            . = ALIGN(4); 
-            *(.etext)
-        }
-    }
-    .ekey : { *(.ekey) }
+Sections:
+Idx Name          Size      VMA       LMA       File off  Algn
+  &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt; .text         &lt;span style=&#34;color:#ae81ff&#34;&gt;00000333&lt;/span&gt;  &lt;span style=&#34;color:#ae81ff&#34;&gt;00000000&lt;/span&gt;  &lt;span style=&#34;color:#ae81ff&#34;&gt;00000000&lt;/span&gt;  &lt;span style=&#34;color:#ae81ff&#34;&gt;00000040&lt;/span&gt;  &lt;span style=&#34;color:#ae81ff&#34;&gt;2&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;**&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;4&lt;/span&gt;
+                  CONTENTS, ALLOC, LOAD, RELOC, READONLY, CODE
+  &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt; .data         &lt;span style=&#34;color:#ae81ff&#34;&gt;00000050&lt;/span&gt;  &lt;span style=&#34;color:#ae81ff&#34;&gt;00000000&lt;/span&gt;  &lt;span style=&#34;color:#ae81ff&#34;&gt;00000000&lt;/span&gt;  &lt;span style=&#34;color:#ae81ff&#34;&gt;000003&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;80&lt;/span&gt;  &lt;span style=&#34;color:#ae81ff&#34;&gt;2&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;**&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;5&lt;/span&gt;
+                  CONTENTS, ALLOC, LOAD, DATA
+  &lt;span style=&#34;color:#ae81ff&#34;&gt;2&lt;/span&gt; .bss          &lt;span style=&#34;color:#ae81ff&#34;&gt;00000000&lt;/span&gt;  &lt;span style=&#34;color:#ae81ff&#34;&gt;00000000&lt;/span&gt;  &lt;span style=&#34;color:#ae81ff&#34;&gt;00000000&lt;/span&gt;  &lt;span style=&#34;color:#ae81ff&#34;&gt;000003&lt;/span&gt;d0  &lt;span style=&#34;color:#ae81ff&#34;&gt;2&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;**&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;2&lt;/span&gt;
+                  ALLOC
+  &lt;span style=&#34;color:#ae81ff&#34;&gt;3&lt;/span&gt; .note         &lt;span style=&#34;color:#ae81ff&#34;&gt;00000014&lt;/span&gt;  &lt;span style=&#34;color:#ae81ff&#34;&gt;00000000&lt;/span&gt;  &lt;span style=&#34;color:#ae81ff&#34;&gt;00000000&lt;/span&gt;  &lt;span style=&#34;color:#ae81ff&#34;&gt;000003&lt;/span&gt;d0  &lt;span style=&#34;color:#ae81ff&#34;&gt;2&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;**&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;
+                  CONTENTS, READONLY
+  &lt;span style=&#34;color:#ae81ff&#34;&gt;4&lt;/span&gt; .stab         &lt;span style=&#34;color:#ae81ff&#34;&gt;000020e8&lt;/span&gt;  &lt;span style=&#34;color:#ae81ff&#34;&gt;00000000&lt;/span&gt;  &lt;span style=&#34;color:#ae81ff&#34;&gt;00000000&lt;/span&gt;  &lt;span style=&#34;color:#ae81ff&#34;&gt;000003e4&lt;/span&gt;  &lt;span style=&#34;color:#ae81ff&#34;&gt;2&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;**&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;2&lt;/span&gt;
+                  CONTENTS, RELOC, READONLY, DEBUGGING
+  &lt;span style=&#34;color:#ae81ff&#34;&gt;5&lt;/span&gt; .stabstr      &lt;span style=&#34;color:#ae81ff&#34;&gt;00008f&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;17&lt;/span&gt;  &lt;span style=&#34;color:#ae81ff&#34;&gt;00000000&lt;/span&gt;  &lt;span style=&#34;color:#ae81ff&#34;&gt;00000000&lt;/span&gt;  &lt;span style=&#34;color:#ae81ff&#34;&gt;000024&lt;/span&gt;cc  &lt;span style=&#34;color:#ae81ff&#34;&gt;2&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;**&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;
+                  CONTENTS, READONLY, DEBUGGING
+  &lt;span style=&#34;color:#ae81ff&#34;&gt;6&lt;/span&gt; .rodata       &lt;span style=&#34;color:#ae81ff&#34;&gt;000001e4&lt;/span&gt;  &lt;span style=&#34;color:#ae81ff&#34;&gt;00000000&lt;/span&gt;  &lt;span style=&#34;color:#ae81ff&#34;&gt;00000000&lt;/span&gt;  &lt;span style=&#34;color:#ae81ff&#34;&gt;0000&lt;/span&gt;b400  &lt;span style=&#34;color:#ae81ff&#34;&gt;2&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;**&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;5&lt;/span&gt;
+                  CONTENTS, ALLOC, LOAD, READONLY, DATA
+  &lt;span style=&#34;color:#ae81ff&#34;&gt;7&lt;/span&gt; .comment      &lt;span style=&#34;color:#ae81ff&#34;&gt;00000023&lt;/span&gt;  &lt;span style=&#34;color:#ae81ff&#34;&gt;00000000&lt;/span&gt;  &lt;span style=&#34;color:#ae81ff&#34;&gt;00000000&lt;/span&gt;  &lt;span style=&#34;color:#ae81ff&#34;&gt;0000&lt;/span&gt;b5e4  &lt;span style=&#34;color:#ae81ff&#34;&gt;2&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;**&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;
+                  CONTENTS, READONLY
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Here we can see the standard sections of an EFL file.&lt;/p&gt;
+&lt;h1 id=&#34;encrypted-section&#34;&gt;Encrypted section&lt;/h1&gt;
+&lt;p&gt;Our goal is to add a new custom section, .etext, to the ELF and to place all our hidden code inside it. Thankfully this is simple using gcc, we just have to add a function attribute to all functions we want to protect and the compiler will automatically add them to che specified section. To make things more readable we will use a macro.&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-c&#34; data-lang=&#34;c&#34;&gt;&lt;span style=&#34;color:#75715e&#34;&gt;#define ENCRYPTED_SECTION &amp;#34;.etext&amp;#34;
+&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;#define ENCRYPTED __attribute__ ((__section__ (POLYV_ENCRYPTED_SECTION)))
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Now we can put any function in the .etext section easily.&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-c&#34; data-lang=&#34;c&#34;&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;void&lt;/span&gt; ENCRYPTED &lt;span style=&#34;color:#a6e22e&#34;&gt;encrypted_function&lt;/span&gt;() { &lt;span style=&#34;color:#75715e&#34;&gt;/* ... */&lt;/span&gt; }
+&lt;span style=&#34;color:#66d9ef&#34;&gt;void&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;normal_function&lt;/span&gt;() { &lt;span style=&#34;color:#75715e&#34;&gt;/* ... */&lt;/span&gt; }
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;But there are problems, big ones. This only works on if there is only a single compilation unit, a single .cpp file. That is a bit limiting, we shouldn&amp;rsquo;t be forced to develop our application as a unity build!
+And if we manage to merge all .etext of our units into a final big one, where is it in memory? How can we find it? To answer all those question we will use an old art, known only to embedded firmware developers, a custom linker script.&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;
+// With the SECTIONS comands we can specify how the sections of the different
+// object files are merged together, here we simply merge all separate .etext sections
+SECTIONS {
+
+	// The OVERLAY command is exactly what we need to manipulate the hidden section, 
+	// it will create two linker symbols, one at the beginning and one at the end  
+    	OVERLAY : { .etext { *(.etext) } }
+
+	// This is the section that will contain our program license
+    	.license : { *(.license) }
 
 } INSERT AFTER .text;
-&lt;/code&gt;&lt;/pre&gt;&lt;p&gt;Se chiamiamo questo script encrypted.ld, possiamo specificare usarlo durante la compilazione con la flag -Tencrypted.ld.&lt;/p&gt;
-&lt;h1 id=&#34;implementazione&#34;&gt;Implementazione&lt;/h1&gt;
-&lt;p&gt;Ora possiamo scrivere la funzione del loader che decripterà la regione nascosta.&lt;/p&gt;
-&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-c&#34; data-lang=&#34;c&#34;&gt;&lt;span style=&#34;color:#75715e&#34;&gt;// Simboli generati dal linker per individuare l&amp;#39;inizio e la fine della regione criptata
+&lt;/code&gt;&lt;/pre&gt;&lt;p&gt;If we call this linker script &lt;em&gt;encrypted.ld&lt;/em&gt; then we can use it during compilation by using the linker flag -T.&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-bash&#34; data-lang=&#34;bash&#34;&gt;ld -Tencrypted.ld ...
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h1 id=&#34;loader&#34;&gt;Loader&lt;/h1&gt;
+&lt;p&gt;With our setup complete we can now create the loader, which will encrypt/decrypt our hidden section using a simple XOR with the license.&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-c&#34; data-lang=&#34;c&#34;&gt;&lt;span style=&#34;color:#75715e&#34;&gt;// The linker sections generated by the OVERLAY command in the linker script
 &lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;extern&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;char&lt;/span&gt; __load_start_etext, __load_stop_etext;
 
-&lt;span style=&#34;color:#75715e&#34;&gt;// Decripta la regione critica
-&lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;void&lt;/span&gt; POLYV_LOADER &lt;span style=&#34;color:#a6e22e&#34;&gt;polyv_self_sxor&lt;/span&gt;(&lt;span style=&#34;color:#66d9ef&#34;&gt;char&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; key, size_t key_size) {
+&lt;span style=&#34;color:#66d9ef&#34;&gt;void&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;self_sxor&lt;/span&gt;(&lt;span style=&#34;color:#66d9ef&#34;&gt;char&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; key, size_t key_size) {
 
     size_t section_beg &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; (size_t)&lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&lt;/span&gt;__load_start_etext;
     size_t section_end &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; (size_t)&lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&lt;/span&gt;__load_stop_etext;
@@ -83,8 +105,8 @@ Il loader ha il compito di decriptare la seconda regione dopo aver, ad esempio, 
     &lt;span style=&#34;color:#75715e&#34;&gt;// Disable writing of the section
 &lt;/span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;    mprotect(section_page, section_size, PROT_EXEC &lt;span style=&#34;color:#f92672&#34;&gt;|&lt;/span&gt; PROT_READ);
 }
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h1 id=&#34;conclusione&#34;&gt;Conclusione&lt;/h1&gt;
-&lt;p&gt;Grazie! Alla prossima.
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h1 id=&#34;conclusion&#34;&gt;Conclusion&lt;/h1&gt;
+&lt;p&gt;Thanks! Until next time.
 FZ.&lt;/p&gt;
 </content>
     </item>

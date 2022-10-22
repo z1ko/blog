@@ -2,30 +2,28 @@
 <html lang="en">
 <head>
   
-    <title>ELF code encryption :: z1blog</title>
+    <title>ELF code encryption [draft] :: z1blog</title>
   
   <meta http-equiv="content-type" content="text/html; charset=utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="In questo post vedremo come creare un eseguibile con del codice criptato." />
+<meta name="description" content="In this post we will learn how to dynamically encrypt/decrypt code sections of an ELF file to make reverse engineering a bit more difficult." />
 <meta name="keywords" content="" />
 <meta name="robots" content="noodp" />
-<link rel="canonical" href="https://z1ko.github.io/z1blog.github.io/posts/elf_code_encryption/" />
+<link rel="canonical" href="https://z1ko.github.io/blog/posts/elf_code_encryption/" />
 
 
 
 
-<link rel="stylesheet" href="https://z1ko.github.io/z1blog.github.io/assets/style.css">
-
-  <link rel="stylesheet" href="https://z1ko.github.io/z1blog.github.io/assets/pink.css">
-
+<link rel="stylesheet" href="https://z1ko.github.io/blog/assets/style.css">
 
 
 
 
 
-<link rel="apple-touch-icon" href="https://z1ko.github.io/z1blog.github.io/img/apple-touch-icon-192x192.png">
 
-  <link rel="shortcut icon" href="https://z1ko.github.io/z1blog.github.io/img/favicon/pink.png">
+<link rel="apple-touch-icon" href="https://z1ko.github.io/blog/img/apple-touch-icon-192x192.png">
+
+  <link rel="shortcut icon" href="https://z1ko.github.io/blog/img/favicon/orange.png">
 
 
 
@@ -35,13 +33,13 @@
 
 <meta property="og:locale" content="en" />
 <meta property="og:type" content="article" />
-<meta property="og:title" content="ELF code encryption">
-<meta property="og:description" content="In questo post vedremo come creare un eseguibile con del codice criptato." />
-<meta property="og:url" content="https://z1ko.github.io/z1blog.github.io/posts/elf_code_encryption/" />
+<meta property="og:title" content="ELF code encryption [draft]">
+<meta property="og:description" content="In this post we will learn how to dynamically encrypt/decrypt code sections of an ELF file to make reverse engineering a bit more difficult." />
+<meta property="og:url" content="https://z1ko.github.io/blog/posts/elf_code_encryption/" />
 <meta property="og:site_name" content="z1blog" />
 
   
-    <meta property="og:image" content="https://z1ko.github.io/z1blog.github.io/img/favicon/pink.png">
+    <meta property="og:image" content="https://z1ko.github.io/blog/img/favicon/orange.png">
   
 
 <meta property="og:image:width" content="2048">
@@ -62,7 +60,7 @@
 
 
 </head>
-<body class="pink">
+<body class="orange">
 
 
 <div class="container center headings--one-size">
@@ -70,7 +68,7 @@
   <header class="header">
   <div class="header__inner">
     <div class="header__logo">
-      <a href="https://z1ko.github.io/z1blog.github.io/">
+      <a href="https://z1ko.github.io/blog/">
   <div class="logo">
     Terminal
   </div>
@@ -87,7 +85,7 @@
     
 <div class="post">
   <h1 class="post-title">
-    <a href="https://z1ko.github.io/z1blog.github.io/posts/elf_code_encryption/">ELF code encryption</a></h1>
+    <a href="https://z1ko.github.io/blog/posts/elf_code_encryption/">ELF code encryption [draft]</a></h1>
   <div class="post-meta">
     
       <span class="post-date">
@@ -108,41 +106,64 @@
   
 
   <div class="post-content"><div>
-        <h1 id="lidea">L&rsquo;idea<a href="#lidea" class="hanchor" ariaLabel="Anchor">&#8983;</a> </h1>
-<p>Per questo progetto volevo creare una libreria e dei tools per facilitare la creazione di codice criptato. L&rsquo;idea è quella di produrre un eseguibile diviso in due sezioni, un loader e una regione criptata.
-Il loader ha il compito di decriptare la seconda regione dopo aver, ad esempio, superato un controllo sulla licenza.</p>
-<h1 id="setup">Setup<a href="#setup" class="hanchor" ariaLabel="Anchor">&#8983;</a> </h1>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c" data-lang="c"><span style="color:#75715e">#define POLYV_IMPLEMENTATION
-</span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;polyv.h&gt;</span><span style="color:#75715e">
-</span><span style="color:#75715e"></span>
-<span style="color:#75715e">// Funzione che verra automaticamente criptata nell&#39;eseguibile finale
-</span><span style="color:#75715e"></span><span style="color:#66d9ef">void</span> POLYV_ENCRYPTED <span style="color:#a6e22e">encrypted_function</span>() { <span style="color:#75715e">/* ... */</span> }
+        <h1 id="motivation">Motivation<a href="#motivation" class="hanchor" ariaLabel="Anchor">&#8983;</a> </h1>
+<p>Dynamic encryption and decryption of executable code is an usefull and interesting thing, it can be used to protect our software from reverse engineering attempts or to create polymorphic viruses that hide their code signature from simple antivirus signature detection. In this post we will focus our attention on the first case, hiding our closed source code and exposing only a &ldquo;loader&rdquo; interface, used to decrypt the code after, for example, we pass a signature check.</p>
+<h1 id="elf-file-format">ELF file format<a href="#elf-file-format" class="hanchor" ariaLabel="Anchor">&#8983;</a> </h1>
+<p>The ELF file is used to describe how a program is laid out in main memory, and is made of a header, describing the internal structure of the file, and some sections and segments. To keep things simple and not
+delve to deep in the format internals (you can find all the information here: <a href="https://man7.org/linux/man-pages/man5/elf.5.html">https://man7.org/linux/man-pages/man5/elf.5.html</a>) we just need to remember that the code and static data of a program are stored inside different sections, .text for the instructions, .data and .bss for static initialized and uninitialized variables respectively. Segments describe how different multiple sections are laid out in virtual memory.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c" data-lang="c">architecture: i386, flags <span style="color:#ae81ff">0x00000011</span><span style="color:#f92672">:</span>
+HAS_RELOC, HAS_SYMS
+start address <span style="color:#ae81ff">0x00000000</span>
 
-<span style="color:#75715e">// Funzione normale, non verrà criptata
-</span><span style="color:#75715e"></span><span style="color:#66d9ef">void</span> <span style="color:#a6e22e">normal_function</span>() { <span style="color:#75715e">/* ... */</span> }
-</code></pre></div><p>Definiamo delle macro per semplificarci la vita, tutte le funzioni con il nostro attributo POLYV_ENCRYPTED verranno inserite nella regione segreta dal linker</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c" data-lang="c"><span style="color:#75715e">#define POLYV_ENCRYPTED_SECTION &#34;.etext&#34;
-</span><span style="color:#75715e">#define POLYV_ENCRYPTED __attribute__ ((section (POLYV_ENCRYPTED_SECTION)))
-</span></code></pre></div><p>Ma cosa succede se non abbiamo una sola unità di compilazione? E come facciamo a capire l&rsquo;inizio e la fine della regione nascosta? Entrambi questi quesiti possono essere risolti creando uno script per il linker tutto nostro, un&rsquo;antica arte che solamente gli sviluppatori di firmware conoscono.</p>
-<pre><code class="language-ld" data-lang="ld">SECTIONS {
-    OVERLAY : {
-        .etext
-        {
-            . = ALIGN(4); 
-            *(.etext)
-        }
-    }
-    .ekey : { *(.ekey) }
+Sections:
+Idx Name          Size      VMA       LMA       File off  Algn
+  <span style="color:#ae81ff">0</span> .text         <span style="color:#ae81ff">00000333</span>  <span style="color:#ae81ff">00000000</span>  <span style="color:#ae81ff">00000000</span>  <span style="color:#ae81ff">00000040</span>  <span style="color:#ae81ff">2</span><span style="color:#f92672">**</span><span style="color:#ae81ff">4</span>
+                  CONTENTS, ALLOC, LOAD, RELOC, READONLY, CODE
+  <span style="color:#ae81ff">1</span> .data         <span style="color:#ae81ff">00000050</span>  <span style="color:#ae81ff">00000000</span>  <span style="color:#ae81ff">00000000</span>  <span style="color:#ae81ff">000003</span><span style="color:#ae81ff">80</span>  <span style="color:#ae81ff">2</span><span style="color:#f92672">**</span><span style="color:#ae81ff">5</span>
+                  CONTENTS, ALLOC, LOAD, DATA
+  <span style="color:#ae81ff">2</span> .bss          <span style="color:#ae81ff">00000000</span>  <span style="color:#ae81ff">00000000</span>  <span style="color:#ae81ff">00000000</span>  <span style="color:#ae81ff">000003</span>d0  <span style="color:#ae81ff">2</span><span style="color:#f92672">**</span><span style="color:#ae81ff">2</span>
+                  ALLOC
+  <span style="color:#ae81ff">3</span> .note         <span style="color:#ae81ff">00000014</span>  <span style="color:#ae81ff">00000000</span>  <span style="color:#ae81ff">00000000</span>  <span style="color:#ae81ff">000003</span>d0  <span style="color:#ae81ff">2</span><span style="color:#f92672">**</span><span style="color:#ae81ff">0</span>
+                  CONTENTS, READONLY
+  <span style="color:#ae81ff">4</span> .stab         <span style="color:#ae81ff">000020e8</span>  <span style="color:#ae81ff">00000000</span>  <span style="color:#ae81ff">00000000</span>  <span style="color:#ae81ff">000003e4</span>  <span style="color:#ae81ff">2</span><span style="color:#f92672">**</span><span style="color:#ae81ff">2</span>
+                  CONTENTS, RELOC, READONLY, DEBUGGING
+  <span style="color:#ae81ff">5</span> .stabstr      <span style="color:#ae81ff">00008f</span><span style="color:#ae81ff">17</span>  <span style="color:#ae81ff">00000000</span>  <span style="color:#ae81ff">00000000</span>  <span style="color:#ae81ff">000024</span>cc  <span style="color:#ae81ff">2</span><span style="color:#f92672">**</span><span style="color:#ae81ff">0</span>
+                  CONTENTS, READONLY, DEBUGGING
+  <span style="color:#ae81ff">6</span> .rodata       <span style="color:#ae81ff">000001e4</span>  <span style="color:#ae81ff">00000000</span>  <span style="color:#ae81ff">00000000</span>  <span style="color:#ae81ff">0000</span>b400  <span style="color:#ae81ff">2</span><span style="color:#f92672">**</span><span style="color:#ae81ff">5</span>
+                  CONTENTS, ALLOC, LOAD, READONLY, DATA
+  <span style="color:#ae81ff">7</span> .comment      <span style="color:#ae81ff">00000023</span>  <span style="color:#ae81ff">00000000</span>  <span style="color:#ae81ff">00000000</span>  <span style="color:#ae81ff">0000</span>b5e4  <span style="color:#ae81ff">2</span><span style="color:#f92672">**</span><span style="color:#ae81ff">0</span>
+                  CONTENTS, READONLY
+</code></pre></div><p>Here we can see the standard sections of an EFL file.</p>
+<h1 id="encrypted-section">Encrypted section<a href="#encrypted-section" class="hanchor" ariaLabel="Anchor">&#8983;</a> </h1>
+<p>Our goal is to add a new custom section, .etext, to the ELF and to place all our hidden code inside it. Thankfully this is simple using gcc, we just have to add a function attribute to all functions we want to protect and the compiler will automatically add them to che specified section. To make things more readable we will use a macro.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c" data-lang="c"><span style="color:#75715e">#define ENCRYPTED_SECTION &#34;.etext&#34;
+</span><span style="color:#75715e">#define ENCRYPTED __attribute__ ((__section__ (POLYV_ENCRYPTED_SECTION)))
+</span></code></pre></div><p>Now we can put any function in the .etext section easily.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c" data-lang="c"><span style="color:#66d9ef">void</span> ENCRYPTED <span style="color:#a6e22e">encrypted_function</span>() { <span style="color:#75715e">/* ... */</span> }
+<span style="color:#66d9ef">void</span> <span style="color:#a6e22e">normal_function</span>() { <span style="color:#75715e">/* ... */</span> }
+</code></pre></div><p>But there are problems, big ones. This only works on if there is only a single compilation unit, a single .cpp file. That is a bit limiting, we shouldn&rsquo;t be forced to develop our application as a unity build!
+And if we manage to merge all .etext of our units into a final big one, where is it in memory? How can we find it? To answer all those question we will use an old art, known only to embedded firmware developers, a custom linker script.</p>
+<pre><code>
+// With the SECTIONS comands we can specify how the sections of the different
+// object files are merged together, here we simply merge all separate .etext sections
+SECTIONS {
+
+	// The OVERLAY command is exactly what we need to manipulate the hidden section, 
+	// it will create two linker symbols, one at the beginning and one at the end  
+    	OVERLAY : { .etext { *(.etext) } }
+
+	// This is the section that will contain our program license
+    	.license : { *(.license) }
 
 } INSERT AFTER .text;
-</code></pre><p>Se chiamiamo questo script encrypted.ld, possiamo specificare usarlo durante la compilazione con la flag -Tencrypted.ld.</p>
-<h1 id="implementazione">Implementazione<a href="#implementazione" class="hanchor" ariaLabel="Anchor">&#8983;</a> </h1>
-<p>Ora possiamo scrivere la funzione del loader che decripterà la regione nascosta.</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c" data-lang="c"><span style="color:#75715e">// Simboli generati dal linker per individuare l&#39;inizio e la fine della regione criptata
+</code></pre><p>If we call this linker script <em>encrypted.ld</em> then we can use it during compilation by using the linker flag -T.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">ld -Tencrypted.ld ...
+</code></pre></div><h1 id="loader">Loader<a href="#loader" class="hanchor" ariaLabel="Anchor">&#8983;</a> </h1>
+<p>With our setup complete we can now create the loader, which will encrypt/decrypt our hidden section using a simple XOR with the license.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-c" data-lang="c"><span style="color:#75715e">// The linker sections generated by the OVERLAY command in the linker script
 </span><span style="color:#75715e"></span><span style="color:#66d9ef">extern</span> <span style="color:#66d9ef">char</span> __load_start_etext, __load_stop_etext;
 
-<span style="color:#75715e">// Decripta la regione critica
-</span><span style="color:#75715e"></span><span style="color:#66d9ef">void</span> POLYV_LOADER <span style="color:#a6e22e">polyv_self_sxor</span>(<span style="color:#66d9ef">char</span><span style="color:#f92672">*</span> key, size_t key_size) {
+<span style="color:#66d9ef">void</span> <span style="color:#a6e22e">self_sxor</span>(<span style="color:#66d9ef">char</span><span style="color:#f92672">*</span> key, size_t key_size) {
 
     size_t section_beg <span style="color:#f92672">=</span> (size_t)<span style="color:#f92672">&amp;</span>__load_start_etext;
     size_t section_end <span style="color:#f92672">=</span> (size_t)<span style="color:#f92672">&amp;</span>__load_stop_etext;
@@ -165,8 +186,8 @@ Il loader ha il compito di decriptare la seconda regione dopo aver, ad esempio, 
     <span style="color:#75715e">// Disable writing of the section
 </span><span style="color:#75715e"></span>    mprotect(section_page, section_size, PROT_EXEC <span style="color:#f92672">|</span> PROT_READ);
 }
-</code></pre></div><h1 id="conclusione">Conclusione<a href="#conclusione" class="hanchor" ariaLabel="Anchor">&#8983;</a> </h1>
-<p>Grazie! Alla prossima.
+</code></pre></div><h1 id="conclusion">Conclusion<a href="#conclusion" class="hanchor" ariaLabel="Anchor">&#8983;</a> </h1>
+<p>Thanks! Until next time.
 FZ.</p>
 
       </div></div>
@@ -181,7 +202,7 @@ FZ.</p>
     <div class="pagination__buttons">
         
         <span class="button previous">
-            <a href="https://z1ko.github.io/z1blog.github.io/posts/introduction/">
+            <a href="https://z1ko.github.io/blog/posts/introduction/">
                 <span class="button__icon">←</span>
                 <span class="button__text">Introduction</span>
             </a>
@@ -213,8 +234,8 @@ FZ.</p>
   </div>
 </footer>
 
-<script src="https://z1ko.github.io/z1blog.github.io/assets/main.js"></script>
-<script src="https://z1ko.github.io/z1blog.github.io/assets/prism.js"></script>
+<script src="https://z1ko.github.io/blog/assets/main.js"></script>
+<script src="https://z1ko.github.io/blog/assets/prism.js"></script>
 
 
 

@@ -10,6 +10,6 @@ paginate = 5
 contentTypeName = "posts"
 
 # Configurazione del tema
-themeColor = "pink"
+themeColor = "orange"
 fullWidthTheme = false
 centerTheme = true
